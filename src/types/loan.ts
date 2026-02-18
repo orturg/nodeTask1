@@ -6,3 +6,4 @@ export type Loan = {
     returnDate: Date | null;
     status: "ACTIVE" | "RETURNED";
 };
+

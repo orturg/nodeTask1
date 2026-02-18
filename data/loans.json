@@ -1,0 +1,10 @@
+[
+  {
+    "id": "697eb737-f9b7-40e8-bb09-19ae0b569e17",
+    "userId": "52773b9d-2771-4a48-8d7a-ab033948b0ea",
+    "bookId": "2fcecee2-c4b1-4510-bd57-b26ba0534507",
+    "loanDate": "2026-02-18T11:12:27.464Z",
+    "returnDate": null,
+    "status": "ACTIVE"
+  }
+]

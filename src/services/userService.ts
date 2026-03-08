@@ -1,24 +1,16 @@
-import { randomUUID } from "crypto";
-import type { User } from "../types/user";
-import type { CreateUserDto } from "../schemas/user.schema";
-import { USERS, persistUsers } from "../storage";
+import prisma from '../db/prisma';
 
-export function findAll(): User[] {
-    return USERS;
+export async function findAll() {
+    return prisma.user.findMany({
+        select: { id: true, name: true, email: true, role: true },
+    });
 }
 
-export function findById(id: string): User | undefined {
-    return USERS.find((user) => user.id === id);
-}
-
-export function create(dto: CreateUserDto): User {
-    const existing = USERS.find((u) => u.email === dto.email);
-    if (existing) {
-        throw { status: 409, message: "User with this email already exists" };
-    }
-
-    const user: User = { id: randomUUID(), ...dto };
-    USERS.push(user);
-    persistUsers();
+export async function findById(id: string) {
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: { id: true, name: true, email: true, role: true },
+    });
+    if (!user) throw { status: 404, message: 'User not found' };
     return user;
 }

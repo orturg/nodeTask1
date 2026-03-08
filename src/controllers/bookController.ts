@@ -1,50 +1,35 @@
-import type { Request, Response, NextFunction } from "express";
-import * as BookService from "../services/bookService";
+import type { Request, Response, NextFunction } from 'express';
+import * as BookService from '../services/bookService';
 
+type BookParams = { id: string };
 
-export function getBooks(req: Request, res: Response) {
-    res.json({ data: BookService.findAll() });
+export async function getBooks(req: Request, res: Response, next: NextFunction) {
+    try {
+        res.json({ data: await BookService.findAll() });
+    } catch (err) { next(err); }
 }
 
-export function getBookById(req: Request<BookParams>, res: Response, next: NextFunction) {
+export async function getBookById(req: Request<BookParams>, res: Response, next: NextFunction) {
     try {
-        const book = BookService.findById(req.params.id);
-        if (!book) {
-            return res.status(404).json({ error: "Book not found" });
-        }
-        res.json({ data: book });
-    } catch (err) {
-        next(err);
-    }
+        res.json({ data: await BookService.findById(req.params.id) });
+    } catch (err) { next(err); }
 }
 
-export function createBook(req: Request, res: Response, next: NextFunction) {
+export async function createBook(req: Request, res: Response, next: NextFunction) {
     try {
-        const book = BookService.create(req.body);
-        res.status(201).json({ data: book });
-    } catch (err) {
-        next(err);
-    }
+        res.status(201).json({ data: await BookService.create(req.body) });
+    } catch (err) { next(err); }
 }
 
-export function updateBook(req: Request<BookParams>, res: Response, next: NextFunction) {
+export async function updateBook(req: Request<BookParams>, res: Response, next: NextFunction) {
     try {
-        const book = BookService.update(req.params.id, req.body);
-        res.json({ data: book });
-    } catch (err) {
-        next(err);
-    }
+        res.json({ data: await BookService.update(req.params.id, req.body) });
+    } catch (err) { next(err); }
 }
 
-export function deleteBook(req: Request<BookParams>, res: Response, next: NextFunction) {
+export async function deleteBook(req: Request<BookParams>, res: Response, next: NextFunction) {
     try {
-        BookService.remove(req.params.id);
+        await BookService.remove(req.params.id);
         res.status(204).end();
-    } catch (err) {
-        next(err);
-    }
+    } catch (err) { next(err); }
 }
-
-type BookParams = {
-    id: string;
-};

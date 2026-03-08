@@ -1,72 +1,36 @@
-import { randomUUID } from "crypto";
-import type { Loan } from "../types/loan";
-import type { CreateLoanDto } from "../schemas/loan.schema";
-import { BOOKS, USERS, LOANS, persistLoans, persistBooks } from "../storage";
+import prisma from '../db/prisma';
+import type { CreateLoanDto } from '../schemas/loan.schema';
 
-export function findAll(): Loan[] {
-    return LOANS;
+export async function findAll(userId: string, role: string) {
+    const where = role === 'ADMIN' ? {} : { userId };
+    return prisma.loan.findMany({ where });
 }
 
-export function create(dto: CreateLoanDto): Loan {
-    const user = USERS.find((u) => u.id === dto.userId);
-    if (!user) {
-        throw { status: 400, message: "User not found" };
-    }
+export async function create(dto: CreateLoanDto) {
+    const book = await prisma.book.findUnique({ where: { id: dto.bookId } });
+    if (!book) throw { status: 400, message: 'Book not found' };
+    if (!book.available) throw { status: 400, message: 'Book is not available' };
 
-    const book = BOOKS.find((b) => b.id === dto.bookId);
-    if (!book) {
-        throw { status: 400, message: "Book not found" };
-    }
-
-    if (!book.available) {
-        throw { status: 400, message: "Book is not available" };
-    }
-
-    const activeLoan = LOANS.find(
-        (loan) => loan.bookId === dto.bookId && loan.status === "ACTIVE",
-    );
-    if (activeLoan) {
-        throw { status: 400, message: "Book already has an active loan" };
-    }
-
-    const loan: Loan = {
-        id: randomUUID(),
-        userId: dto.userId,
-        bookId: dto.bookId,
-        loanDate: new Date(),
-        returnDate: null,
-        status: "ACTIVE",
-    };
-
-    LOANS.push(loan);
-    book.available = false;
-
-    persistLoans();
-    persistBooks();
-
-    return loan;
+    return prisma.$transaction(async (tx) => {
+        const loan = await tx.loan.create({
+            data: { userId: dto.userId, bookId: dto.bookId, status: 'ACTIVE' },
+        });
+        await tx.book.update({ where: { id: dto.bookId }, data: { available: false } });
+        return loan;
+    });
 }
 
-export function returnLoan(id: string): Loan {
-    const loan = LOANS.find((l) => l.id === id);
-    if (!loan) {
-        throw { status: 404, message: "Loan not found" };
-    }
+export async function returnLoan(id: string) {
+    const loan = await prisma.loan.findUnique({ where: { id } });
+    if (!loan) throw { status: 404, message: 'Loan not found' };
+    if (loan.status === 'RETURNED') throw { status: 400, message: 'Loan already returned' };
 
-    if (loan.status === "RETURNED") {
-        throw { status: 400, message: "Loan is already returned" };
-    }
-
-    loan.status = "RETURNED";
-    loan.returnDate = new Date();
-
-    const book = BOOKS.find((b) => b.id === loan.bookId);
-    if (book) {
-        book.available = true;
-        persistBooks();
-    }
-
-    persistLoans();
-
-    return loan;
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.loan.update({
+            where: { id },
+            data: { status: 'RETURNED', returnDate: new Date() },
+        });
+        await tx.book.update({ where: { id: loan.bookId }, data: { available: true } });
+        return updated;
+    });
 }

@@ -1,8 +1,10 @@
 import express from "express";
 import routes from "./routes";
-import {errorHandler} from "./middleware/validate";
+import { errorHandler } from "./middleware/validate";
 
 const app = express();
+
+app.use(express.json());
 
 app.use("/", routes);
 

@@ -1,30 +1,27 @@
-import type { Request, Response, NextFunction } from "express";
-import * as UserService from "../services/userService";
+import type { Request, Response, NextFunction } from 'express';
+import * as UserService from '../services/userService';
 
-type UserParams = {
-    id: string;
-};
+type UserParams = { id: string };
 
-export function getUsers(req: Request, res: Response) {
-    res.json({ data: UserService.findAll() });
-}
-
-export function getUserById(req: Request<UserParams>, res: Response, next: NextFunction) {
+export async function getUsers(req: Request, res: Response, next: NextFunction) {
     try {
-        const user = UserService.findById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        res.json({ data: user });
+        res.json({ data: await UserService.findAll() });
     } catch (err) {
         next(err);
     }
 }
 
-export function createUser(req: Request, res: Response, next: NextFunction) {
+export async function getUserById(req: Request<UserParams>, res: Response, next: NextFunction) {
     try {
-        const user = UserService.create(req.body);
-        res.status(201).json({ data: user });
+        res.json({ data: await UserService.findById(req.params.id) });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function getMe(req: Request, res: Response, next: NextFunction) {
+    try {
+        res.json({ data: await UserService.findById(req.user!.userId) });
     } catch (err) {
         next(err);
     }

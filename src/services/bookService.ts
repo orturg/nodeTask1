@@ -1,59 +1,43 @@
-import { randomUUID } from "crypto";
-import type { Book } from "../types/book";
-import type { CreateBookDto, UpdateBookDto } from "../schemas/book.schema";
-import { BOOKS, LOANS, persistBooks } from "../storage";
+import prisma from '../db/prisma';
+import type { CreateBookDto, UpdateBookDto } from '../schemas/book.schema';
 
-export function findAll(): Book[] {
-    return BOOKS;
+export async function findAll() {
+    return prisma.book.findMany();
 }
 
-export function findById(id: string): Book | undefined {
-    return BOOKS.find((book) => book.id === id);
-}
-
-export function create(dto: CreateBookDto): Book {
-    const existing = BOOKS.find((b) => b.isbn === dto.isbn);
-    if (existing) {
-        throw { status: 409, message: "Book with this ISbN already exists" };
-    }
-
-    const book: Book = { id: randomUUID(), ...dto, available: true };
-    BOOKS.push(book);
-    persistBooks();
+export async function findById(id: string) {
+    const book = await prisma.book.findUnique({ where: { id } });
+    if (!book) throw { status: 404, message: 'Book not found' };
     return book;
 }
 
-export function update(id: string, dto: UpdateBookDto): Book {
-    const index = BOOKS.findIndex((b) => b.id === id);
-    if (index === -1) {
-        throw { status: 404, message: "Book not found" };
-    }
+export async function create(dto: CreateBookDto) {
+    const existing = await prisma.book.findUnique({ where: { isbn: dto.isbn } });
+    if (existing) throw { status: 409, message: 'Book with this ISBN already exists' };
 
-    if (dto.isbn && dto.isbn !== BOOKS[index].isbn) {
-        const existing = BOOKS.find((b) => b.isbn === dto.isbn);
-        if (existing) {
-            throw { status: 409, message: "Book with this ISBN already exists" };
-        }
-    }
-
-    BOOKS[index] = { ...BOOKS[index], ...dto };
-    persistBooks();
-    return BOOKS[index];
+    return prisma.book.create({ data: { ...dto, available: true } });
 }
 
-export function remove(id: string): void {
-    const index = BOOKS.findIndex((b) => b.id === id);
-    if (index === -1) {
-        throw { status: 404, message: "Book not found" };
+export async function update(id: string, dto: UpdateBookDto) {
+    const book = await prisma.book.findUnique({ where: { id } });
+    if (!book) throw { status: 404, message: 'Book not found' };
+
+    if (dto.isbn && dto.isbn !== book.isbn) {
+        const existing = await prisma.book.findUnique({ where: { isbn: dto.isbn } });
+        if (existing) throw { status: 409, message: 'Book with this ISBN already exists' };
     }
 
-    const activeLoan = LOANS.find(
-        (loan) => loan.bookId === id && loan.status === "ACTIVE",
-    );
-    if (activeLoan) {
-        throw { status: 400, message: "Cannot delete book with active loans" };
-    }
+    return prisma.book.update({ where: { id }, data: dto });
+}
 
-    BOOKS.splice(index, 1);
-    persistBooks();
+export async function remove(id: string) {
+    const book = await prisma.book.findUnique({ where: { id } });
+    if (!book) throw { status: 404, message: 'Book not found' };
+
+    const activeLoan = await prisma.loan.findFirst({
+        where: { bookId: id, status: 'ACTIVE' },
+    });
+    if (activeLoan) throw { status: 400, message: 'Cannot delete book with active loans' };
+
+    await prisma.book.delete({ where: { id } });
 }

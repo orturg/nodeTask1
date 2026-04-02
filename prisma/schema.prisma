@@ -26,6 +26,9 @@ model User {
   email        String  @unique
   passwordHash String
   role         Role    @default(USER)
+  avatarUrl    String?
+  resetToken   String?
+  resetTokenExpires DateTime?
   loans        Loan[]
 }
 
